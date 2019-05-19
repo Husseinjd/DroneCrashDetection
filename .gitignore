@@ -1,0 +1,4 @@
+*.log
+*.pickle
+__pycache__/
+.ipynb*
