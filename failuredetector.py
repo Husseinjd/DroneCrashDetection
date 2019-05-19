@@ -8,7 +8,6 @@ import glob
 
 
 class FailureDetector():
-
     '''
             The class contains different methods to detect the failure
             in the components and report back the reason for that failure based
@@ -29,8 +28,8 @@ class FailureDetector():
 
 
     def _reset_failures(self):
-
-        self.failures = {'GPS Failure': np.nan ,
+        self.failures = {'File Name': np.nan,
+                             'GPS Failure': np.nan ,
                              'Mechanical Failure': np.nan,
                               'Compass Failure': np.nan,
                               'Power Failure': np.nan,
@@ -48,6 +47,8 @@ class FailureDetector():
             using predefined rules
         """
         self.fileslist = filelist
+        self.log_name = filelist[0][filelist[0].index('_')+1:-7]
+
         for key,value in self.parameters.items():
             for f in self.fileslist:
                 if key in f:
@@ -59,6 +60,7 @@ class FailureDetector():
                     elif key== 'GPS':
                         pass
         # update failure dataframe
+        self.failures['File Name'] = self.log_name
         self.full_failure_table = self.full_failure_table.append(self.failures,ignore_index=True)
         self._reset_failures()
 
@@ -75,20 +77,20 @@ class FailureDetector():
 
         """
         cls = df_comp.columns
-        if 'ATT_DesRoll'  in cls and 'ATT_Roll'  in cls :
-            if self._checkroll(df_comp['ATT_DesRoll'],df_comp['ATT_Roll']):
+        if 'DesRoll'  in cls and 'Roll'  in cls :
+            if self._checkroll(df_comp['DesRoll'],df_comp['Roll']):
                 self.failures['Uncontrolled roll'] = True
             else:
                 self.failures['Uncontrolled roll'] = False
 
-        if 'ATT_DesPitch'  in cls and 'ATT_Pitch'  in cls:
-            if self._checkpitch(df_comp['ATT_DesPitch'],df_comp['ATT_Pitch']):
+        if 'DesPitch'  in cls and 'Pitch'  in cls:
+            if self._checkpitch(df_comp['DesPitch'],df_comp['Pitch']):
                 self.failures['Uncontrolled pitch'] = True
             else:
                 self.failures['Uncontrolled pitch'] = False
 
-        if 'ATT_DesYaw'  in cls and 'ATT_Yaw'  in cls:
-            if self._checkyaw(df_comp['ATT_DesYaw'],df_comp['ATT_Yaw']):
+        if 'DesYaw'  in cls and 'Yaw'  in cls:
+            if self._checkyaw(df_comp['DesYaw'],df_comp['Yaw']):
                 self.failures['Uncontrolled yaw'] = True
             else:
                 self.failures['Uncontrolled yaw'] = False

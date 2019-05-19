@@ -74,8 +74,9 @@ class DataLoader():
                 # removing nan values
                 c_labels = [ob for ob in c_labels if not ob is np.nan]
                 c_labels = np.array([str(c).strip() for c in c_labels])  # cleaning the spaces
+                var_recor = [c+'_'+sub for sub in c_labels]
                 variable_name_list = [sub for sub in c_labels]
-                self.var_list += variable_name_list
+                self.var_list += var_recor
                 df_comp = self._non_equalcolumns(c, variable_name_list)
                 if isinstance(df_comp,int): #component has inconsistent columns
                     continue
@@ -99,7 +100,7 @@ class DataLoader():
         # dataframe
             return pd.DataFrame(dt, index=['count']).transpose()
         else:
-            print('Please run extract_info before trying to get count')
+            print('Please run load before trying to get count')
             return -1
 
     def _non_equalcolumns(self, comp, var_list):
