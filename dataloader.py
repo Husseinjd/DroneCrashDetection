@@ -75,13 +75,12 @@ class DataLoader():
                 c_labels = [ob for ob in c_labels if not ob is np.nan]
                 c_labels = np.array([str(c).strip() for c in c_labels])  # cleaning the spaces
                 var_recor = [c+'_'+sub for sub in c_labels]
-                variable_name_list = [sub for sub in c_labels]
-                self.var_list += var_recor
+                variable_name_list = [sub for sub in c_labels] #this is used for the exported dataframe
+                self.var_list += var_recor #this is used for variable counting
                 df_comp = self._non_equalcolumns(c, variable_name_list)
                 if isinstance(df_comp,int): #component has inconsistent columns
                     continue
-            # more goes on here to extract to pickle files
-            #here we can add failure detection on the df comp per column
+
 
             #clean up the columsn that contain spaces
             try:
@@ -130,8 +129,6 @@ class DataLoader():
         # dataframe with only the variable added
         try:
             df_comp = self.df.loc[comp].dropna(axis=1, how='all')
-                # drop any columns which has more than 70% of nan values
-                # df_comp.drop(df_comp.loc[:,(df_comp.isnull().sum()  / len(df_comp) > 0.70)], axis=1 ,inplace=True)
         except:
                 # component not in the dataframe
                 return -1
@@ -149,6 +146,11 @@ class DataLoader():
             self._fix_varlist(var_list)
         #----------------------------------------
         df_comp.columns = var_list.copy()
+
+        #some can contain more columns that are not all Nan making the parsing to numeric return an error
+        if comp == 'ATT':
+            df_comp = df_comp[['DesRoll','Roll','DesPitch','Pitch','DesYaw','Yaw']]
+
         return df_comp
 
     def _fix_varlist(self,varlist):
@@ -159,6 +161,7 @@ class DataLoader():
                 varlist[i] = 'DesYaw'
             elif c == 'PitchIn':
                 varlist[i] = 'DesPitch'
+        #only keep those columns too
 
     def export(self,df_comp,comp_name):
         """export dataframe to pickle file per component

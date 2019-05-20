@@ -32,12 +32,12 @@ class FailureDetector():
                              'GPS Failure': np.nan ,
                              'Mechanical Failure': np.nan,
                               'Compass Failure': np.nan,
-                              'Power Failure': np.nan,
-                              'Gyroscope Failure': np.nan,
+                              'Acceleromer  Failure': np.nan,
                               'Radio Failure': np.nan,
-                              'ERR': np.nan,
-                              'Uncontrolled yaw': np.nan,
+                              'Uncontrolled latitude':np.nan,
+                              'Uncontrolled longitude':np.nan,
                               'Uncontrolled altitude':np.nan,
+                              'Uncontrolled yaw': np.nan,
                               'Uncontrolled pitch':np.nan,
                               'Uncontrolled roll':np.nan}
 
@@ -62,22 +62,66 @@ class FailureDetector():
                 return f
         return -1
 
-    def detectFailures(self,filelist):
+
+    def _correct_decimals(self,df_comp):
+        """When parsing str to float or int some strings look like ' 14.245.232'
+            this functions correct such string by limiting 1 value after the decimal if such an error occured
+
+
+        Parameters
+        ----------
+        df_comp : dataframe
+            Description of parameter `df_comp`.
+
+        Returns
+        -------
+        corrected Dataframe
+            Description of returned object.
+
+        """
+        #filled later on
+
+
+    def _dropnacol(self,df_comp):
+        '''
+        some dataframes still contain fully Nan columns
+        '''
+        #drop columns if nan reach more than 95% percent of the number of rows
+        df_comp =df_comp.dropna(axis=1,thresh=int(0.95* len(df_comp)),how='all',)
+        try:
+            df_comp = df_comp.apply(pd.to_numeric)
+        except:
+            print('No numeric conversion in component') #can be due to many errors
+            return -1
+        return 1
+    def detectFailures(self,filelist,filename):
         """Loops through each file's variables and checks if a failure is detected
             using predefined rules
         """
-        self.fileslist = filelist
-        self.log_name = filelist[0][filelist[0].index('_')+1:-7]
+        self.filelist = filelist
+        self.log_name = filename
 
         #check if component exists in the files
         #loop throught the components present in the parameters dictionary
-        if self.check_file_exist('ATT',self.filelist) != -1: #if component file was found
-                df_comp = pd.read_pickle(f)
-                self.checkATT(df_comp)
+        f = self.check_file_exist('ERR',self.filelist)
+        if  f != -1:
+            df_err = pd.read_pickle(f)
+        else:
+            df_err = None
 
-        if self.check_file_exist('GPS',self.filelist) != -1: #if component file was found
+        f = self.check_file_exist('ATT',self.filelist)
+        if f != -1: #if component file was found
                 df_comp = pd.read_pickle(f)
-                self.checkGPS(df_comp)
+                res = self._dropnacol(df_comp)
+                if res == 1:
+                    self.checkATT(df_comp)
+
+        f = self.check_file_exist('GPS',self.filelist)
+        if f != -1: #if component file was found
+                df_comp = pd.read_pickle(f)
+                res = self._dropnacol(df_comp)
+                if res == 1:
+                    self.checkGPS(df_comp,df_err)
 
         # update failure dataframe
         self.failures['File Name'] = self.log_name
@@ -87,10 +131,29 @@ class FailureDetector():
         return self.full_failure_table
 
 
-    def checkGPS(self,df_comp):
-        #not implemented yet..
-        #should follow the same rules
+    def checkCompass(self):
         pass
+#----------------------------------------------------------------------------------------------
+    def checkGPS(self,df_comp,df_err=None):
+        cls = df_comp.columns
+        self.failures['GPS Failure'] = False
+
+        if 'NSats' in cls:
+            if sum(df_comp['NSats'][df_comp['NSats'] < 10 ]) > 0:
+                self.failures['GPS Failure'] = True
+
+        if 'HDop' in cls:
+            if sum(df_comp['HDop'][df_comp['HDop'] < 10 ]) > 0:
+                self.failures['GPS Failure'] = True
+
+        #check error dataframe
+        if df_err is not None:
+                cls_err = df_err.columns
+                if 'Subsys' in cls_err and 'ECode' in cls_err:
+                    for index, row in df_err.iterrows():
+                        if (row['Subsys'] == 11 ) and (row['ECode'] == 2):
+                            self.failures['GPS Failure'] = True
+       #check error codes from df_err ['Subsys','ECode']
 
 
 #-------------------------------------------------------------------------------------------------------------
@@ -119,18 +182,30 @@ class FailureDetector():
 
 
     def _checkyaw(self,desraw,raw):
-        if len(abs(desraw - raw) > 40) >= 0 :
-            return True
+        try:
+            if len(abs(desraw - raw) > 40) > 0 :
+                return True
+        except:
+            print('Error occured in subtracting raw in file :', self.log_name)
+            return False
         return False
 
     def _checkpitch(self,despitch,pitch):
-        if len(abs(despitch - pitch) > 40) >= 0 :
-            return True
+        try:
+            if len(abs(despitch - pitch) > 40) > 0 :
+                return True
+        except:
+            print('Error occured in subtracting pitch in file :', self.log_name)
+            return False
         return False
 
     def _checkroll(self,desroll,roll):
-        if len(abs(desroll - roll) > 40) >= 0 :
-            return True
+        try:
+            if len(abs(desroll - roll) > 40) > 0 :
+                return True
+        except:
+            print('Error occured in subtracting roll in file :', self.log_name)
+            return False
         return False
 
  # more methods here for different failures that can occur
