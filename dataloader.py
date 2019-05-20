@@ -82,6 +82,12 @@ class DataLoader():
                     continue
             # more goes on here to extract to pickle files
             #here we can add failure detection on the df comp per column
+
+            #clean up the columsn that contain spaces
+            try:
+                df_comp = df_comp.apply(pd.to_numeric)
+            except:
+                print('No numeric conversion in component ', c)
             if export:
                     self.export(df_comp,c)
 
@@ -138,9 +144,21 @@ class DataLoader():
                             cnter+=1
         if len(var_list) > len(df_comp.columns):
                     return -1
-
+        #check if it's RollIn instead of DesRoll
+        if comp == 'ATT':
+            self._fix_varlist(var_list)
+        #----------------------------------------
         df_comp.columns = var_list.copy()
         return df_comp
+
+    def _fix_varlist(self,varlist):
+        for i,c in enumerate(varlist):
+            if c == 'RollIn':
+                varlist[i] = 'DesRoll'
+            elif c == 'YawIn':
+                varlist[i] = 'DesYaw'
+            elif c == 'PitchIn':
+                varlist[i] = 'DesPitch'
 
     def export(self,df_comp,comp_name):
         """export dataframe to pickle file per component

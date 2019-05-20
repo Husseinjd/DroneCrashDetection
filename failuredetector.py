@@ -23,7 +23,8 @@ class FailureDetector():
 
         self.parameters = {'ATT': ['DesRoll','Roll','DesPitch','Pitch','DesYaw','Yaw','ErrRP','ErrYaw'] ,
                            'ATUN': ['TuneStep','RateMax','RPGain','RDGain','SPGain'],
-                           'GPS': ['Time','NSats','HDop','Lng','RelAlt','Alt','SPD','GCrs']
+                           'GPS': ['Time','NSats','HDop','Lng','RelAlt','Alt','SPD','GCrs'],
+                           'Compass'
                            }
 
 
@@ -49,8 +50,9 @@ class FailureDetector():
         self.fileslist = filelist
         self.log_name = filelist[0][filelist[0].index('_')+1:-7]
 
-        for key,value in self.parameters.items():
-            for f in self.fileslist:
+        #check ATT if exists and then check for uncontrolled yaw,raw and pitch
+        
+        for f in self.fileslist:
                 if key in f:
                     # load dataframe
                     df_comp = pd.read_pickle(f)
@@ -58,6 +60,7 @@ class FailureDetector():
                     if key == 'ATT':
                         self.checkATT(df_comp)
                     elif key== 'GPS':
+                        self.checkGPS()
                         pass
         # update failure dataframe
         self.failures['File Name'] = self.log_name
@@ -68,6 +71,7 @@ class FailureDetector():
 
 
     def checkGPS(self,df_comp):
+
         pass
 
 
@@ -97,12 +101,18 @@ class FailureDetector():
 
 
     def _checkyaw(self,desraw,raw):
+        if len(abs(desraw - raw) > 40) >= 0 :
+            return True
         return False
 
     def _checkpitch(self,despitch,pitch):
+        if len(abs(despitch - pitch) > 40) >= 0 :
+            return True
         return False
 
     def _checkroll(self,desroll,roll):
+        if len(abs(desroll - roll) > 40) >= 0 :
+            return True
         return False
 
  # more methods here for different failures that can occur
