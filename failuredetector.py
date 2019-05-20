@@ -23,8 +23,7 @@ class FailureDetector():
 
         self.parameters = {'ATT': ['DesRoll','Roll','DesPitch','Pitch','DesYaw','Yaw','ErrRP','ErrYaw'] ,
                            'ATUN': ['TuneStep','RateMax','RPGain','RDGain','SPGain'],
-                           'GPS': ['Time','NSats','HDop','Lng','RelAlt','Alt','SPD','GCrs'],
-                           'Compass'
+                           'GPS': ['Time','NSats','HDop','Lng','RelAlt','Alt','SPD','GCrs']
                            }
 
 
@@ -42,6 +41,26 @@ class FailureDetector():
                               'Uncontrolled pitch':np.nan,
                               'Uncontrolled roll':np.nan}
 
+    def check_file_exist(self,component,filelist):
+        """checks for the exists of a dataframe pickle file and returns the name
+            of the file
+
+        Parameters
+        ----------
+        component : string
+
+        filelist : list
+            list of pickle files
+
+        Returns
+        -------
+        string
+            filepath
+        """
+        for f in filelist:
+            if component in f:
+                return f
+        return -1
 
     def detectFailures(self,filelist):
         """Loops through each file's variables and checks if a failure is detected
@@ -50,18 +69,16 @@ class FailureDetector():
         self.fileslist = filelist
         self.log_name = filelist[0][filelist[0].index('_')+1:-7]
 
-        #check ATT if exists and then check for uncontrolled yaw,raw and pitch
-        
-        for f in self.fileslist:
-                if key in f:
-                    # load dataframe
-                    df_comp = pd.read_pickle(f)
-                    # each column name as key and value as the column values
-                    if key == 'ATT':
-                        self.checkATT(df_comp)
-                    elif key== 'GPS':
-                        self.checkGPS()
-                        pass
+        #check if component exists in the files
+        #loop throught the components present in the parameters dictionary
+        if self.check_file_exist('ATT',self.filelist) != -1: #if component file was found
+                df_comp = pd.read_pickle(f)
+                self.checkATT(df_comp)
+
+        if self.check_file_exist('GPS',self.filelist) != -1: #if component file was found
+                df_comp = pd.read_pickle(f)
+                self.checkGPS(df_comp)
+
         # update failure dataframe
         self.failures['File Name'] = self.log_name
         self.full_failure_table = self.full_failure_table.append(self.failures,ignore_index=True)
@@ -71,7 +88,8 @@ class FailureDetector():
 
 
     def checkGPS(self,df_comp):
-
+        #not implemented yet..
+        #should follow the same rules
         pass
 
 
