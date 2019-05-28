@@ -63,25 +63,6 @@ class FailureDetector():
         return -1
 
 
-    def _correct_decimals(self,df_comp):
-        """When parsing str to float or int some strings look like ' 14.245.232'
-            this functions correct such string by limiting 1 value after the decimal if such an error occured
-
-
-        Parameters
-        ----------
-        df_comp : dataframe
-            Description of parameter `df_comp`.
-
-        Returns
-        -------
-        corrected Dataframe
-            Description of returned object.
-
-        """
-        #filled later on
-
-
     def _dropnacol(self,df_comp):
         '''
         some dataframes still contain fully Nan columns
@@ -94,6 +75,7 @@ class FailureDetector():
             print('No numeric conversion in component') #can be due to many errors
             return -1
         return 1
+
     def detectFailures(self,filelist,filename):
         """Loops through each file's variables and checks if a failure is detected
             using predefined rules
@@ -103,35 +85,50 @@ class FailureDetector():
 
         #check if component exists in the files
         #loop throught the components present in the parameters dictionary
-        f = self.check_file_exist('ERR',self.filelist)
+        f_err = self.check_file_exist('ERR',self.filelist)
         if  f != -1:
-            df_err = pd.read_pickle(f)
+            df_err = pd.read_csv(f)
         else:
             df_err = None
 
-        f = self.check_file_exist('ATT',self.filelist)
+
+        f_att = self.check_file_exist('ATT',self.filelist)
         if f != -1: #if component file was found
-                df_comp = pd.read_pickle(f)
+                df_comp = pd.read_csv(f)
                 res = self._dropnacol(df_comp)
                 if res == 1:
                     self.checkATT(df_comp)
 
-        f = self.check_file_exist('GPS',self.filelist)
+
+        f_gps = self.check_file_exist('GPS',self.filelist)
         if f != -1: #if component file was found
-                df_comp = pd.read_pickle(f)
+                df_comp = pd.read_csv(f)
                 res = self._dropnacol(df_comp)
                 if res == 1:
                     self.checkGPS(df_comp,df_err)
 
+
+
         # update failure dataframe
         self.failures['File Name'] = self.log_name
+
+
+
+        #append to the full table of log files
         self.full_failure_table = self.full_failure_table.append(self.failures,ignore_index=True)
         self._reset_failures()
-
         return self.full_failure_table
 
 
-    def checkCompass(self):
+
+
+    def uc_altitude(self,gps_ralt,baro_alt,ctun_alt):
+        pass
+
+    def uc_latitude(self,gps_lat,cmd_lat):
+        pass
+
+    def uc_longitude(self,cmd_lng,gps_lng):
         pass
 #----------------------------------------------------------------------------------------------
     def checkGPS(self,df_comp,df_err=None):
@@ -159,7 +156,6 @@ class FailureDetector():
 #-------------------------------------------------------------------------------------------------------------
     def checkATT(self,df_comp):
         """Checks for ATT failures and updates failure dict to True failures or False otherwise
-
         """
         cls = df_comp.columns
         if 'DesRoll'  in cls and 'Roll'  in cls :
@@ -179,7 +175,6 @@ class FailureDetector():
                 self.failures['Uncontrolled yaw'] = True
             else:
                 self.failures['Uncontrolled yaw'] = False
-
 
     def _checkyaw(self,desraw,raw):
         try:
@@ -207,5 +202,4 @@ class FailureDetector():
             print('Error occured in subtracting roll in file :', self.log_name)
             return False
         return False
-
  # more methods here for different failures that can occur

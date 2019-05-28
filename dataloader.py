@@ -17,17 +17,20 @@ class DataLoader():
         '''
         init a dataloader instance
         '''
+        #list of errors recorded while loading the data
         self.errors_list = []
         # list with all variable detected (can contain duplicates)
         self.var_list = []
 
     def load(self,filepath):
-        """load file into a pandas data frame and queries the log
-           into required form to add it to a dict for exporting as a pickle files
+        """load file into a pandas data frame and extract log information into required
+        format type
+
         Returns
         -------
         int
             returns -1 if loading of the file was not successfull
+            returns 1 if loading was successfull
 
         """
         self.filepath = filepath
@@ -45,9 +48,15 @@ class DataLoader():
 
         # use components as index and drop fully empty columns
         self.df = df.set_index(0).dropna(axis=1, how='all')
-
         try:
-            self.components = self.df.loc['FMT'][3].str.strip()  # not unique
+            self.df[3] = self.df[3].str.strip() # cleaning third column
+        except:
+            print('Dataframe with weird column datatypes and structure')
+            self.errors_list.append(-4)
+            return -4
+        try:
+            self.components = self.df.index.unique() # not unique
+            #filter components to ones with spaces
         except:
             print('Error in extracting components')
             self.errors_list.append(-3)
@@ -61,16 +70,15 @@ class DataLoader():
         list of dataframes for each component
         """
         comp_list = []
-        already_visited_list = []
         for j, c in enumerate(self.components):
-            if c in already_visited_list:
-                continue
-            else:
-                already_visited_list.append(c)
             variable_name_list = []
             if 'FMT' in self.df.index:
                 # getting all the values
-                c_labels = self.df.loc['FMT'][self.components == c].values[0][4:18]
+                c_labels = self.df.loc['FMT'][self.df.loc['FMT'][3] == c]
+                if len(c_labels) > 0: #if that component was not found in the logs
+                    c_labels =  c_labels.values[0][4:18]
+                else:
+                    continue
                 # removing nan values
                 c_labels = [ob for ob in c_labels if not ob is np.nan]
                 c_labels = np.array([str(c).strip() for c in c_labels])  # cleaning the spaces
@@ -80,15 +88,11 @@ class DataLoader():
                 df_comp = self._non_equalcolumns(c, variable_name_list)
                 if isinstance(df_comp,int): #component has inconsistent columns
                     continue
-
-
-            #clean up the columsn that contain spaces
-            try:
-                df_comp = df_comp.apply(pd.to_numeric)
-            except:
-                print('No numeric conversion in component ', c)
+            else:
+                continue
             if export:
                     self.export(df_comp,c)
+
 
     def getcount(self):
         """returns a dataframe with the number of occurences for each variable found in the log files
@@ -149,11 +153,21 @@ class DataLoader():
 
         #some can contain more columns that are not all Nan making the parsing to numeric return an error
         if comp == 'ATT':
-            df_comp = df_comp[['DesRoll','Roll','DesPitch','Pitch','DesYaw','Yaw']]
+            try:
+                df_comp = df_comp[['DesRoll','Roll','DesPitch','Pitch','DesYaw','Yaw']]
+            except:
+                return -1
 
         return df_comp
 
     def _fix_varlist(self,varlist):
+        """Fixing the naming schema for roll,pitch and yaw before exporting
+
+        Parameters
+        ----------
+        varlist : list
+            list of names extracted
+        """
         for i,c in enumerate(varlist):
             if c == 'RollIn':
                 varlist[i] = 'DesRoll'
@@ -161,11 +175,44 @@ class DataLoader():
                 varlist[i] = 'DesYaw'
             elif c == 'PitchIn':
                 varlist[i] = 'DesPitch'
-        #only keep those columns too
+
 
     def export(self,df_comp,comp_name):
-        """export dataframe to pickle file per component
+        """export dataframe to csv file per component
+
+        -- this might be changed later to export into a database
         """
         file_name = self.filepath[self.filepath.index('/') + 1:-4]
-        df_comp.to_pickle('variables_info/'+comp_name +'_'+file_name+'.pickle')
+        df_comp.to_csv('variables_info/'+comp_name +'_'+file_name+'.csv')
         del df_comp
+
+
+    def read_file(self,component,logfile_name,variable_needed):
+        """a method for querying extracted
+        dataframes
+
+        Parameters
+        ----------
+        component_df_name : str
+        logfile_name : str
+        variable_needed : str
+
+        Returns
+        -------
+        series
+            columns required from dataframe if found
+        int
+            return -1 if column was not found
+
+        """
+        path = 'variables_info/'+component+'_/'+logfile_name+'.csv'
+        try:
+            temp = pd.read_csv(path)
+        except:
+            print('File not found error')
+            return -1
+        try:
+            return temp[variable_needed]
+        except:
+            print('Variable not found in dataframe --KeyError')
+            return -1
