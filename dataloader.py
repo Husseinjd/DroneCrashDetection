@@ -183,6 +183,11 @@ class DataLoader():
         -- this might be changed later to export into a database
         """
         file_name = self.filepath[self.filepath.index('/') + 1:-4]
+        #check if directoy exists if not create it
+        if not os.path.exists('variables_info'):
+            os.mkdir('variables_info')
+            print("Directory " , dirName ,  " Created ")
+        print("Exporting..")
         df_comp.to_csv('variables_info/'+comp_name +'_'+file_name+'.csv')
         del df_comp
 
