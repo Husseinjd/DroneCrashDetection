@@ -3,13 +3,11 @@ This class loads data from log files
 into data dictionaries that can be queried
 '''
 import pandas as pd
-import csv
 import time
+import pymongo
 import numpy as np
 import os
-import json
-import pickle
-
+from database import DatabaseConnector
 
 class DataLoader():
 
@@ -21,6 +19,7 @@ class DataLoader():
         self.errors_list = []
         # list with all variable detected (can contain duplicates)
         self.var_list = []
+        self.dbconnector = DatabaseConnector('vardb','27017')
 
     def load(self,filepath):
         """load file into a pandas data frame and extract log information into required
@@ -34,6 +33,8 @@ class DataLoader():
 
         """
         self.filepath = filepath
+        self.filename = self.filepath[self.filepath.index('/') + 1:-4]
+
         try:  # parse error handling for log files
             df = pd.read_csv(self.filepath, names=range(30), low_memory=False)
         except:
@@ -69,15 +70,20 @@ class DataLoader():
         -------
         list of dataframes for each component
         """
+        #init var
         comp_list = []
+        #creating an empty collection
+
         for j, c in enumerate(self.components):
+            if c == 'FMT': #ignoring FMT as a variable
+                continue
             variable_name_list = []
             if 'FMT' in self.df.index:
                 # getting all the values
                 c_labels = self.df.loc['FMT'][self.df.loc['FMT'][3] == c]
                 if len(c_labels) > 0: #if that component was not found in the logs
                     c_labels =  c_labels.values[0][4:18]
-                else:
+                else: #empty FMT
                     continue
                 # removing nan values
                 c_labels = [ob for ob in c_labels if not ob is np.nan]
@@ -88,10 +94,25 @@ class DataLoader():
                 df_comp = self._non_equalcolumns(c, variable_name_list)
                 if isinstance(df_comp,int): #component has inconsistent columns
                     continue
-            else:
+                #add line index column to the dataframe
+                
+            else: #FMT Not in dataframe
                 continue
+            #add to dict and create a new collection for the data
+            self.mydict= {}
+            self.dbconnector.set_collection(c+'_'+self.filename)
+            for col in df_comp.columns:
+                    try: #if parsing to numeric fails the variable is ignored
+                        self.mydict[col]= pd.to_numeric(df_comp[col]).tolist()
+                        #insert dict into db
+                    except:
+                        #cannot be converted to numeric
+                        self.errors_list.append(-5)
+                        continue
             if export:
-                    self.export(df_comp,c)
+                resp = self.dbconnector.insert_dict(self.mydict)
+                if resp == -1:
+                    print('Dict insert error in file : {}'.format(self.filename))
 
 
     def getcount(self):
@@ -175,49 +196,3 @@ class DataLoader():
                 varlist[i] = 'DesYaw'
             elif c == 'PitchIn':
                 varlist[i] = 'DesPitch'
-
-
-    def export(self,df_comp,comp_name):
-        """export dataframe to csv file per component
-
-        -- this might be changed later to export into a database
-        """
-        file_name = self.filepath[self.filepath.index('/') + 1:-4]
-        #check if directoy exists if not create it
-        if not os.path.exists('variables_info'):
-            os.mkdir('variables_info')
-            print("Directory " , dirName ,  " Created ")
-        print("Exporting..")
-        df_comp.to_csv('variables_info/'+comp_name +'_'+file_name+'.csv')
-        del df_comp
-
-
-    def read_file(self,component,logfile_name,variable_needed):
-        """a method for querying extracted
-        dataframes
-
-        Parameters
-        ----------
-        component_df_name : str
-        logfile_name : str
-        variable_needed : str
-
-        Returns
-        -------
-        series
-            columns required from dataframe if found
-        int
-            return -1 if column was not found
-
-        """
-        path = 'variables_info/'+component+'_/'+logfile_name+'.csv'
-        try:
-            temp = pd.read_csv(path)
-        except:
-            print('File not found error')
-            return -1
-        try:
-            return temp[variable_needed]
-        except:
-            print('Variable not found in dataframe --KeyError')
-            return -1
