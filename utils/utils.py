@@ -6,16 +6,17 @@ import numpy as np
 import pandas as pd
 import pickle
 import seaborn as sns
+import matplotlib.pyplot as plt
 
-def time_df(time_list,plot=False,save_path=None):
+def time_df(time_list,plot=False,save_path=None,title='Title'):
     dtime = pd.DataFrame(time_list,columns=['logname','size MB','duration s'])
     if plot:
-        sns.lineplot(y='duration s',x='size MB',data=tm)
+        sns.lineplot(y='duration s',x='size MB',data=dtime)
         plt.ylabel('Seconds')
         plt.xlabel('MB')
-        plt.title('Top 100 Causality Time Statistic')
+        plt.title(title)
         plt.show()
-    if save is not None:
+    if save_path is not None:
         dtime.to_csv(save_path)
     return dtime
 
@@ -175,4 +176,4 @@ def corr_var(filename,loader,dictlist,find_corr=True):
             return full_df
     else:
         print('No values in the component were found')
-        return -1
+        return -1,-1
