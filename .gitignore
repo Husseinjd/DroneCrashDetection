@@ -3,3 +3,4 @@
 __pycache__/
 variables_info/
 .ipynb*
+.ipynb_checkpints/

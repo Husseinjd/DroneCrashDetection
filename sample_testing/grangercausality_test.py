@@ -150,7 +150,7 @@ class GrangerCausalityTest():
         else:
             self.dict_res[ycx] = False
             #print(res_ycx)
-            for k,value in res_ycx.items():
+            for _,value in res_ycx.items():
                 if value['pvalue'] < self.alpha:
                     self.dict_res[ycx] = True
 
