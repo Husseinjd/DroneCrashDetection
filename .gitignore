@@ -1,5 +1,6 @@
 *.log
-*.pickle
-__pycache__/
+*.__pycache__/
 .ipynb*
 sample_testing/
+.vscode/
+*.ipynb_checkpoints/
