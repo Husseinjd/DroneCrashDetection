@@ -1,0 +1,103 @@
+"""
+This module contains helper functions that are used
+in the analysis
+"""
+import numpy as np
+import pandas as pd
+
+def yawfix(series):
+    """fixes yaw reset
+
+    Parameters
+    ----------
+    series : pandas series
+
+    Returns
+    -------
+    series
+        fixed series values
+    """
+    diff = series - series.shift(-1)
+    pos_add = np.where(diff > 300, 1, 0)
+    neg_add = np.where(diff < -300, -1, 0)
+    sum = pos_add + neg_add
+    sum = sum.cumsum()
+    sum = sum * 360
+    sum = pd.Series(sum, index = series.index)
+    series = series + sum.shift(1)
+    return series
+
+def load_top100_dict():
+    df = load_top100()
+    vardict = {}
+    for var in df['name']:
+        key_comp = var[:var.index('_')]
+        var_sub = var[var.index('_')+1:]
+        if key_comp in vardict.keys():
+            vardict[key_comp].append(var_sub)
+        else:
+            vardict[key_comp] = [var_sub]
+    return vardict
+
+
+def load_top100():
+    df = pd.read_csv('../stats_files/top_100_variables.csv')
+    try:
+        df.columns  =['name','count']
+    except:
+        df.drop('Unnamed: 0',axis=1,inplace=True)
+        df.columns  =['name','count']
+    df = df[~df.name.str.contains("FMT")]
+    return df
+
+def cat_to_int(df,col):
+    """cat categories to integer values
+
+    Parameters
+    ----------
+    df : dataframe
+        Description of parameter `df`.
+    col : str
+        column in the dataframe to be casted
+
+    Returns
+    -------
+    int
+        returns -1 if error occured
+
+    """
+    try:
+        df[col]  = pd.factorize(df[col])[0]
+    except:
+        print('Error Occured while casting')
+        return -1
+
+def corr_var(filename,loader,dictlist,find_corr=True):
+    """
+    :param dictlist  : dict with components needed as key and variable list as values
+    e.g. { RCIN : [C1,C2 ..]}
+    """
+    full_df = pd.DataFrame({'tempcol':[0]}) #temp dataframe
+    novaluescounter=0 #count the number of columns not found per log file
+    for key,values in dictlist.items():
+        df = pd.DataFrame(loader.dbconnector.query(key+'_'+filename))
+        try:
+            #choose only the columns that exists in dataframe
+            values = list(set(df.columns) & set(values))
+            df = df[values+['lineIndex']].set_index('lineIndex')
+            df.columns = [key+'_'+col for col in df.columns]
+        except:
+            novaluescounter+=1
+            continue
+        full_df = pd.concat([full_df,df],axis =1).fillna(method = 'ffill')
+    #clean up the init column
+    full_df = full_df.drop([0],axis=0)
+    full_df = full_df.drop('tempcol',axis=1)
+    #check for categorica  l columns and set them for numeric
+    for col in full_df.columns:
+        if not full_df[col].dtype.kind in 'bifc':
+            cat_to_int(full_df,col)
+    if find_corr:
+        return novaluescounter,full_df.corr()
+    else:
+        return full_df

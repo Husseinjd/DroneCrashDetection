@@ -34,8 +34,9 @@ class DatabaseConnector():
         """
         try:
             self.mycol.insert_one(dict)
-        except:
+        except Exception as e:
             print('error inserting dict to mongo')
+            print(e)
             return -1
 
     def dropdb(self,dbname):

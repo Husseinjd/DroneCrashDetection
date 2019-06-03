@@ -5,9 +5,10 @@ import sys
 module_path = os.path.abspath(os.path.join('..'))
 if module_path not in sys.path:
     sys.path.append(module_path)
+from utils.utils import *
 
 from failure_detector.failuredetector import FailureDetector
-	
+
 class TestFailureMethods(unittest.TestCase):
     """
     This class tests the implemented failure and incident detection Methods
@@ -98,7 +99,13 @@ class TestFailureMethods(unittest.TestCase):
         self.assertEqual(self.fd.failures['Uncontrolled longitude'],True)
 
 
-    
+    def test_all_var(self):
+        """
+        Tests if all 100 variables are within the ones
+        loaded in the database
+        """
+
+
 
 if __name__ == '__main__':
     unittest.main()

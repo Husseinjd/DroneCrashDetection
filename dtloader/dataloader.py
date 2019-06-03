@@ -81,10 +81,8 @@ class DataLoader():
         -------
         list of dataframes for each component
         """
-        #init var
-        comp_list = []
         #creating an empty collection
-        for j, c in enumerate(self.components):
+        for c in self.components:
             if c == 'FMT': #ignoring FMT as a variable
                 continue
             variable_name_list = []
@@ -104,8 +102,11 @@ class DataLoader():
                 var_recor = [c+'_'+sub for sub in c_labels]
                 variable_name_list = [sub for sub in c_labels] #this is used for the exported dataframe
                 self.var_list += var_recor #this is used for variable counting
+                if 'RCIN_C13' in var_recor:
+                    print('Variable exists here : ', self.filename)
                 df_comp = self._non_equalcolumns(c, variable_name_list)
                 if isinstance(df_comp,int): #component has inconsistent columns
+                    print('Error in log', self.filename)
                     continue
                 #add line index column to the dataframe
 
@@ -190,13 +191,6 @@ class DataLoader():
             self._fix_varlist(var_list)
         #----------------------------------------
         df_comp.columns = var_list.copy()
-
-        #some can contain more columns that are not all Nan making the parsing to numeric return an error
-        if comp == 'ATT':
-            try:
-                df_comp = df_comp[['DesRoll','Roll','DesPitch','Pitch','DesYaw','Yaw']]
-            except:
-                return -1
 
         #add the column with the line index
         df_comp['lineIndex'] = idx.copy()

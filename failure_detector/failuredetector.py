@@ -198,20 +198,10 @@ class FailureDetector():
         print('Failure Detection Completed File --  {}'.format(self.log_name))
         return output_dict
 
-    def export_table(self):
-        """Short summary.
-
-        Parameters
-        ----------
-
-
-        Returns
-        -------
-        type
-            Description of returned object.
-
+    def export_table(self,path_exp = 'failure_data.csv'):
+        """export failure detection tablt.
         """
-        self.full_failure_table.to_csv('failure_data.csv')
+        self.full_failure_table.to_csv(path_exp)
 
     def closeconn(self):
         self.dbconnector.close_connection()
