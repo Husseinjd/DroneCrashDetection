@@ -1,11 +1,12 @@
 # DroneCrashDetection
 
-Repository for Drones  Crash Detection  and Analysis
+Repository for Drones Crash Detection  and Analysis
 
 ## Folder Structure 
 
 ```
-├── main_run.ipynb  - here's an example of main_runm that is responsible for - running the dataloader and failure detection procedure     
+├── main_run.ipynb  - here's an example of main_runm that is responsible for
+      running the dataloader and failure detection procedure     
 │
 │
 ├── analysis          - this folder contains jupyter notebooks and pickle files 
