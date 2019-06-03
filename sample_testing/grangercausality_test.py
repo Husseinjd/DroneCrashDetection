@@ -231,3 +231,5 @@ class GrangerCausalityTest():
         fstat = ((r_model.ssr - f_model.ssr)/ df1) / (f_model.ssr / df2)
         p_value = 1- stats.f.cdf(fstat, df1, df2)
         return fstat,p_value
+
+        

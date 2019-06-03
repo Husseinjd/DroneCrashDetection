@@ -4,6 +4,70 @@ in the analysis
 """
 import numpy as np
 import pandas as pd
+import pickle
+import seaborn as sns
+
+def time_df(time_list,plot=False,save_path=None):
+    dtime = pd.DataFrame(time_list,columns=['logname','size MB','duration s'])
+    if plot:
+        sns.lineplot(y='duration s',x='size MB',data=tm)
+        plt.ylabel('Seconds')
+        plt.xlabel('MB')
+        plt.title('Top 100 Causality Time Statistic')
+        plt.show()
+    if save is not None:
+        dtime.to_csv(save_path)
+    return dtime
+
+def encode_cause(df_dict1,sig,dict_var,empty_dict):
+    """
+    Parses dict with comp -> [caused1,caused2, caused3 ...] 
+    and adds it to the dataframe of the component
+    """
+    #dict_var : GPS causes : [ 1 ,2 ,3 nc]
+    d = empty_dict.copy()
+    for v in dict_var[sig]:
+            if 'nc' in v:
+                d[v[:-2]] = 0 #no cause 
+            elif 'bc' in v:
+                 d[v[:-2]] = 2 #both causes each other
+            else:
+                d[v] = 1 #the component is the causes and the columns are the ones affected
+    #concat to the df 
+    df_dict1[sig] = pd.concat([df_dict1[sig],pd.DataFrame(d,index=[len(df_dict1[sig])])])#the df to concat the value to
+
+
+def check_state(gc_t,sr):
+    try:
+        _,is_stat = gc_t.stationary_test(sr)
+        return is_stat
+    except:
+        return -1
+
+
+
+def save_as_pickle(a, path, filename):
+        """
+        Save an object as a pickle file
+        :param object: The python object. Can be list, dict etc.
+        :param path: The path where to save.
+        :param filename: The filename
+        """
+        with open(path+'\\'+ filename, 'wb') as handle:
+                pickle.dump(a, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        print("Save "+ filename +" successfully.")
+
+def load_pickle(path, name):
+        """
+        Load a python object from a pickle file
+        :param path: Path where the object is stored
+        :param name: File name
+        :return: The python object
+        """
+        with open(path + "\\" + name, 'rb') as handle:
+            return_obj = pickle.load(handle)
+        return return_obj
+
 
 def yawfix(series):
     """fixes yaw reset
@@ -27,10 +91,10 @@ def yawfix(series):
     series = series + sum.shift(1)
     return series
 
-def load_top100_dict():
+def load_top100_dict(sample=None):
     df = load_top100()
     vardict = {}
-    for var in df['name']:
+    for var in df['name'][:sample]:
         key_comp = var[:var.index('_')]
         var_sub = var[var.index('_')+1:]
         if key_comp in vardict.keys():
@@ -80,7 +144,12 @@ def corr_var(filename,loader,dictlist,find_corr=True):
     full_df = pd.DataFrame({'tempcol':[0]}) #temp dataframe
     novaluescounter=0 #count the number of columns not found per log file
     for key,values in dictlist.items():
-        df = pd.DataFrame(loader.dbconnector.query(key+'_'+filename))
+        resp = loader.dbconnector.query(key+'_'+filename)
+        if resp != -1: #component found in the database
+            df = pd.DataFrame(resp)
+        else:
+            print('Component not found: ',key)
+            return -1
         try:
             #choose only the columns that exists in dataframe
             values = list(set(df.columns) & set(values))
@@ -90,14 +159,20 @@ def corr_var(filename,loader,dictlist,find_corr=True):
             novaluescounter+=1
             continue
         full_df = pd.concat([full_df,df],axis =1).fillna(method = 'ffill')
+    
     #clean up the init column
     full_df = full_df.drop([0],axis=0)
     full_df = full_df.drop('tempcol',axis=1)
-    #check for categorica  l columns and set them for numeric
-    for col in full_df.columns:
-        if not full_df[col].dtype.kind in 'bifc':
-            cat_to_int(full_df,col)
-    if find_corr:
-        return novaluescounter,full_df.corr()
+
+    if len(full_df) > 1 :
+        #check for categorica  l columns and set them for numeric
+        for col in full_df.columns:
+            if not full_df[col].dtype.kind in 'bifc':
+                cat_to_int(full_df,col)
+        if find_corr:
+            return novaluescounter,full_df.corr()
+        else:
+            return full_df
     else:
-        return full_df
+        print('No values in the component were found')
+        return -1

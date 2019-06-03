@@ -1,6 +1,5 @@
 *.log
 *.pickle
 __pycache__/
-variables_info/
 .ipynb*
-.ipynb_checkpints/
+sample_testing/

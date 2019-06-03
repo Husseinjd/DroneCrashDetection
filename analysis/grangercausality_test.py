@@ -23,9 +23,10 @@ class GrangerCausalityTest():
         self.y = y
         self.maxlag = maxlag
         self.df = pd_frame
+        self.dict_res = {}
 
 
-    def var_grangertest(self,check_stationary=True):
+    def var_grangertest(self,check_stationary=True,verbose=True,use_simpleols = False):
         if self.df is None:
             print('Empty Dataframe')
             return -1
@@ -39,9 +40,13 @@ class GrangerCausalityTest():
             _,is_stationary_x = self.stationary_test(self.df.iloc[:,0])
             _,is_stationary_y = self.stationary_test(self.df.iloc[:,1])
             if not (is_stationary_x and is_stationary_y):
-                    print('Series not stationary')
+                    if verbose:
+                        print('Series not stationary')
                     self.dict_res['err'] = True
                     return np.nan
+            else:
+                self.dict_res['err'] = False
+
 
 
         xcy = self.df.columns[0]+ ' causes ' + self.df.columns[1]
@@ -51,8 +56,17 @@ class GrangerCausalityTest():
 
         
         model = VAR(self.df)
-        mf = model.fit(maxlags=self.maxlag,ic='aic',verbose=False)
-        
+        try:
+            if use_simpleols:
+                raise Exception('Except')
+            mf = model.fit(maxlags=self.maxlag,ic='aic',verbose=False)
+        except: #Error when using aic  'x already contains a constant' use full model
+            #mf = model.fit(maxlags=self.maxlag,ic=None,verbose=False)
+            self.x = self.df.iloc[:,0]
+            self.y = self.df.iloc[:,1]
+            self.names = self.df.columns
+            self.simple_grangertest()
+            return 0
         #first column caused
         #second column causing
 
@@ -78,15 +92,19 @@ class GrangerCausalityTest():
             self.dict_res['bc'] = True
         
         #no causal
-        if self.dict_res[ycx] == False and self.dict_res[ycx] == False:
+        if self.dict_res[xcy] == False and self.dict_res[ycx] == False:
             self.dict_res[nc] = True
         else:
             self.dict_res[nc] = False
 
+        return 0 #success
 
 
     def stationary_test(self,timeseries, plot = False, print_stats = False):
-        dftest = adfuller(timeseries, autolag='AIC')
+        try:
+            dftest = adfuller(timeseries,maxlag=5, autolag='t-stat') #this was changed to the time it takes
+        except:
+            return None,False
         dfoutput = pd.Series(dftest[0:4],index=['Test Statistic', 'p-value', '#Lags Used', 'Number of Observations Used'])
         is_stationary = False
         for key, value in dftest[4].items():
@@ -105,7 +123,7 @@ class GrangerCausalityTest():
         self.output = dfoutput
         return dfoutput, is_stationary
 
-    def simple_grangertest(self,use_var = False):
+    def simple_grangertest(self):
         """checks if the 
 
                 -  x causes y
@@ -132,6 +150,7 @@ class GrangerCausalityTest():
             self.dict_res['err'] = True
             return np.nan
         else:
+            self.dict_res['err'] = False
             self.dict_res[xcy] = False
             #print(res_xcy)
             for _,value in res_xcy.items():
@@ -150,7 +169,7 @@ class GrangerCausalityTest():
         else:
             self.dict_res[ycx] = False
             #print(res_ycx)
-            for k,value in res_ycx.items():
+            for _,value in res_ycx.items():
                 if value['pvalue'] < self.alpha:
                     self.dict_res[ycx] = True
 
@@ -160,7 +179,9 @@ class GrangerCausalityTest():
         else:
             self.dict_res[nc] = False
 
-        if res_xcy and res_ycx:
+        if  self.dict_res[ycx] and self.dict_res[xcy]:
+            self.dict_res['bc']  = True
+        else:
             self.dict_res['bc']  = True
 
            
@@ -176,14 +197,6 @@ class GrangerCausalityTest():
             lag {int} -- the number of lags to consider
             bias {bool} -- including bias in the ols model
         """
-        #check if stationary
-        if check_stationary:
-            _,is_stationary_x = self.stationary_test(self.x)
-            _,is_stationary_y = self.stationary_test(self.y)
-            if not (is_stationary_x and is_stationary_y):
-                    print('Series not stationary')
-                    return np.nan
-
         # we want to check if x causes y
         #check if lag 
         if len(self.x) != len(self.y):
