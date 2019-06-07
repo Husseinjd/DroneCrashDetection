@@ -3,4 +3,4 @@
 .ipynb*
 sample_testing/
 .vscode/
-*.ipynb_checkpoints/
+*.ipynb_checkpoin/

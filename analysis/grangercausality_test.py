@@ -3,7 +3,6 @@ from statsmodels.tsa.tsatools import lagmat2ds
 import statsmodels.api as sm
 from statsmodels.tools.tools import add_constant
 from statsmodels.tsa.vector_ar.var_model import VAR
-
 from scipy import stats
 import matplotlib.pyplot as plt
 import os
