@@ -28,8 +28,8 @@ for correlation and causation analysis
 │    └── failuretest.py
 │
 │
-├── report             - this folder contains the experiment and model configs of your project.
-│   └── simple_mnist_config.json
+├── report             - this folder contains the report files for the project
+│   └── phase 2
 │
 │
 ├── stats_files       - this folder contains files resulted from analysis 
