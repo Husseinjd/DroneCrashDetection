@@ -30,8 +30,11 @@ for correlation and causation analysis
 │
 │
 ├── report             - this folder contains the report files for the project
-│   └── phase 2
-│
+│     └── phase 2
+│  
+├── segmentation             - this folder contains the segmentation required modules
+│   └── segmentation.py
+│   └── segment.py
 │
 ├── stats_files       - this folder contains files resulted from analysis 
 |
