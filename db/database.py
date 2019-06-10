@@ -88,3 +88,6 @@ class DatabaseConnector():
 
     def close_connection(self):
         self.myclient.close()
+
+
+    #add queries for segments

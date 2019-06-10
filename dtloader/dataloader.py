@@ -46,7 +46,7 @@ class DataLoader():
         try:  # parse error handling for log files
             df = pd.read_csv(self.filepath, names=range(30), low_memory=False)
         except:
-            print('Broken log file')
+            print('Broken log file / File not found')
             self.errors_list.append(-1)
             return -1  # broken file
 

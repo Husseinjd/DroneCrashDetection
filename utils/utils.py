@@ -7,6 +7,10 @@ import pandas as pd
 import pickle
 import seaborn as sns
 import matplotlib.pyplot as plt
+import networkx as nx
+import seaborn as sns
+
+
 
 def time_df(time_list,plot=False,save_path=None,title='Title'):
     dtime = pd.DataFrame(time_list,columns=['logname','size MB','duration s'])
@@ -39,6 +43,16 @@ def encode_cause(df_dict1,sig,dict_var,empty_dict):
 
 
 def check_state(gc_t,sr):
+    """check if a variable is stationary
+    
+    Arguments:
+        gc_t {GrangerCausality instance} -- 
+        sr {list of values} -- variable time series values
+    
+    Returns:
+        bool -- True or False
+        -1 -- if an error occured 
+    """
     try:
         _,is_stat = gc_t.stationary_test(sr)
         return is_stat
@@ -177,3 +191,92 @@ def corr_var(filename,loader,dictlist,find_corr=True):
     else:
         print('No values in the component were found')
         return -1,-1
+
+
+##------------------------------------
+##------------------------------------
+## GRAPH UTILS
+##------------------------------------
+##------------------------------------
+def load_graph(df,save=False,save_name=None):
+    """creates loads a graph from a causality dataframe
+    
+    Arguments:
+        df {dataframe} -- causality dataframe exported from granger causality module causality 
+    
+    Keyword Arguments:
+        save {bool} -- save the graph as a pickle file (default: {False})
+        save_name {str} -- the name to use for saving the pickle (default: {None})
+    Returns:
+        returns populated graph instance
+    """
+    DG = nx.DiGraph()
+    DG.add_nodes_from(df.columns)
+    all_nodes = []
+    l_visited = []
+    for idx in df.index:  
+        ltuples = [(idx,cl) for cl in df.columns[df.loc[idx] == 1] if idx != cl and (idx,cl) not in all_nodes]
+        ltuples_bi = [(idx,cl) for cl in df.columns[df.loc[idx] == 2 ] if cl != idx and (idx,cl) not in all_nodes]
+        l_visited = [(cl,idx) for cl in df.columns[df.loc[idx] == 1] if idx != cl]
+        all_nodes += l_visited
+        DG.add_edges_from(ltuples)
+        DG.add_edges_from(ltuples_bi)
+        ltuples = []
+        ltuples_bi =[]
+    if save:
+        save_as_pickle(DG,'../stats_files',save_name) #saving the graph to be used later for analysis
+    return DG
+
+
+def get_connections(graph,node,outgoing=False,incoming=False,plot=False):
+    """Finds the incoming,outgoing and bidirectional edges for a given node (variable)
+    
+    Arguments:
+        graph {[networkx graph instance]} --    
+        node {[str ]} -- [node name]
+    
+    Keyword Arguments:
+        outgoing {bool} -- [] (default: {False})
+        incoming {bool} -- [] (default: {False})
+        plot {bool} -- [] (default: {False})
+    
+    Returns:
+        [list] -- [a list of strings for the nodes connected to the given node]
+    """
+    var = node
+    if outgoing and incoming:
+        nd = list(set([e[1] for e in graph.out_edges(var)]) & set([e[0] for e in graph.in_edges(var)])) 
+    elif outgoing:
+        nd = [e[1] for e in graph.out_edges(var) if e[1] not in  [e[0] for e in graph.in_edges(var)]]
+    elif incoming:
+        nd = [e[0] for e in graph.in_edges(var) if e[0] not in  [e[1] for e in graph.out_edges(var)] ]
+    else:
+        return 0
+    if plot:
+        plt.figure(figsize=(7,5))
+        H = graph.subgraph(nd+[var]).copy()
+        pos = nx.spring_layout(H,k=2,iterations=10)
+        pos[var] = np.array([0.11666525, 0.10171808])
+        l = [e for e in H.edges if var not in e]
+        H.remove_edges_from(l)
+        nx.draw(G=H,pos=pos,with_labels=True,font_size=10,font_weight=10,label=var)
+        plt.draw()
+        plt.show()
+    return nd
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
