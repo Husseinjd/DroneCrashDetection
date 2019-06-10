@@ -11,6 +11,7 @@ Repository for Drones Crash Detection  and Analysis
 │
 ├── analysis          - this folder contains jupyter notebooks and pickle files 
 for correlation and causation analysis
+│    └── segmentation_analysis.ipynb
 │    └── causality_analysis.ipynb
 │    └── correlation_analysis.ipynb
 │    └── grangercausality_test.py -- Module for Granger Causality Test
