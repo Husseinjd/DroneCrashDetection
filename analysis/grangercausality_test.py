@@ -37,14 +37,14 @@ class GrangerCausalityTest():
         #check that both variables are stationary
         if check_stationary:
             _,is_stationary_x = self.stationary_test(self.df.iloc[:,0])
-            _,is_stationary_y = self.stationary_test(self.df.iloc[:,1])
-            if not (is_stationary_x and is_stationary_y):
-                    if verbose:
-                        print('Series not stationary')
+            if is_stationary_x:
+                _,is_stationary_y = self.stationary_test(self.df.iloc[:,1])
+                if is_stationary_y:
+                    self.dict_res['err'] = False
+                else:
                     self.dict_res['err'] = True
                     return np.nan
-            else:
-                self.dict_res['err'] = False
+                
 
 
 
