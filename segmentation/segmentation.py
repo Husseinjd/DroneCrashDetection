@@ -4,7 +4,15 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from .segment import *
 import pandas as pd
+import os
+import sys
 from scipy.stats import linregress
+
+module_path = os.path.abspath(os.path.join('..'))
+if module_path not in sys.path:
+    sys.path.append(module_path)
+
+from utils.utils import *
 
 class Segmentation():
     """Segmentation module providing methods to segment a time series sequence based 
@@ -260,20 +268,30 @@ class Segmentation():
         Arguments:
             plot_title {[str]} -- plot title
         """
-        plt.plot(range(len(self.sequence)),self.sequence,alpha=0.8,color='red',label=plot_title+' real')
+        plt.plot(range(len(self.sequence)),self.sequence,alpha=0.8,color='black',label=plot_title+' real')
         plt.title(plot_title)
         plt.xlabel("Time")
         plt.ylabel("Value")
         plt.xlim((0,len(self.sequence)-1))
-        #plt.legend()
+        plt.legend()
 
-    def draw_segments(self):
+    def find_maxratio(self):
+        ratio_list = []
+        for segment in self.segments:
+            clc_val = calc_segmentsRation(segment[0],segment[1],segment[2],segment[3])
+            ratio_list.append(clc_val)
+        return ratio_list,np.argmax(np.array(ratio_list))
+        
+    def draw_segments(self,highlight_idx = None):
         """plot fitted segments
         
         Arguments:
             segments {[list]} -- tuples representing the line coordinates 
         """
         ax = plt.gca()
-        for segment in self.segments:
-            line = Line2D((segment[0],segment[2]),(segment[1],segment[3]))
+        for i,segment in enumerate(self.segments):
+            clr = 'blue'    
+            if highlight_idx == i:
+                clr = 'red'
+            line = Line2D((segment[0],segment[2]),(segment[1],segment[3]),color=clr)
             ax.add_line(line)

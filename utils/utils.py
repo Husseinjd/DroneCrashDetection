@@ -12,6 +12,11 @@ import seaborn as sns
 
 
 
+
+def calc_segmentsRation(x1,y1,x2,y2):
+    return np.abs((y2 - y1)) / np.abs((x2 - x1))
+
+
 def time_df(time_list,plot=False,save_path=None,title='Title'):
     dtime = pd.DataFrame(time_list,columns=['logname','size MB','duration s'])
     if plot:
