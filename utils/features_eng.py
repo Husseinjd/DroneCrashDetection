@@ -27,6 +27,14 @@ def segment_mean(series,segments):
         mean_series[x1:x2] = mean
     return mean_series
 
+def segment_median(series,segments):
+    median_series = series.copy(deep = True)
+    for segment in segments:
+        x1,_,x2,_ = segment
+        median = np.median(series[x1:x2])
+        median_series[x1:x2] = median
+    return median_series
+
 def segment_ratio_outlier(ratio_series):
     """
 

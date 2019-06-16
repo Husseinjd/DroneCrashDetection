@@ -71,8 +71,6 @@ class GrangerCausalityDiscrete(GrangerCausalityTest):
         return clf,scores
 
 
-
-
     def test(self,x,y,reduced_dataset,full_dataset,target,check_stationary=True,classifier='dt',verbose=True,cv=7):
         
         if check_stationary:
