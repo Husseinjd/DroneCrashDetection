@@ -32,7 +32,7 @@ class Segmentation():
         self.segment_list = []  #a list of segment instances
 
 
-    def segment(self,sequence,seg_method ='sw' ,fit_method='ls',err_method='ssr',seq_range=None,save_seginstance=True,err_growth=0,batch=True,batch_size=None):
+    def segment(self,sequence,seg_method ='sw' ,fit_method='ls',err_method='ssr',seq_range=None,save_seginstance=False,err_growth=0,batch=True,batch_size=None):
         """Return a list of line segments that approximate the sequence.
         
         Arguments:
@@ -75,8 +75,6 @@ class Segmentation():
         if seg_method == 'sw':
             self.segments = self.slidingwindowsegment(self.fit_sequence,self.compute_error,seq_range=self.seq_range)
         elif seg_method == 'td':
-            if batch_size is None:
-                batch_size = np.sqrt(np.var(self.sequence)) #np.round(len(self.sequence) / np.var(self.sequence))
             self.segments = self.topdownsegment(self.fit_sequence, self.compute_error,self.seq_range,self.max_error,err_growth,batch=batch,batch_size=batch_size)
         elif seg_method == 'bu':
             self.segments = self.bottomupsegment(self.fit_sequence, self.compute_error,seq_range=self.seq_range)
@@ -183,10 +181,9 @@ class Segmentation():
         bestlefterror, bestleftsegment = float('inf'), None
         bestrighterror, bestrightsegment = float('inf'), None
         bestidx = None
+        step = 1
         if batch:
             step = batch_size
-        else:
-            step = 1
         for idx in np.arange(seq_range[0] + 1, seq_range[1],step):
             segment_left = fit_sequence( (seq_range[0], idx))
             error_left = compute_error(segment_left)
@@ -199,16 +196,13 @@ class Segmentation():
         if bestlefterror <= max_err:
             leftsegs = [bestleftsegment]
         else:
-            #batch_size = np.sqrt(np.var(self.sequence[seq_range[0]:bestidx+1]))
             leftsegs = self.topdownsegment(fit_sequence,compute_error, (seq_range[0], bestidx),err_growth = err_growth,
-                                         max_err = err_growth*max_err + max_err,batch=True,batch_size=batch_size)
-
+                                         max_err = err_growth*max_err + max_err,batch=batch,batch_size=batch_size)                                    
         if bestrighterror <= max_err:
             rightsegs = [bestrightsegment]
         else:
-            #batch_size = np.sqrt(np.var(self.sequence[bestidx:seq_range[1]+1]))
-            rightsegs = self.topdownsegment(fit_sequence,compute_error,(bestidx, seq_range[1]),err_growth=err_growth,
-                                        max_err = err_growth*max_err + max_err,batch=True,batch_size=batch_size)
+             rightsegs = self.topdownsegment(fit_sequence,compute_error,(bestidx, seq_range[1]),err_growth=err_growth,
+                                        max_err = err_growth*max_err + max_err,batch=batch,batch_size=batch_size)
         
         self.segments = leftsegs + rightsegs
         return self.segments
@@ -262,13 +256,15 @@ class Segmentation():
             error = 0.0
         return (p,error)
 
-    def draw_plot(self,plot_title,label=None):
+    def draw_plot(self,plot_title,label=None,xrange=None):
         """plots the current sequence of data
         
         Arguments:
             plot_title {[str]} -- plot title
         """
-        plt.plot(range(len(self.sequence)),self.sequence,alpha=0.8,color='black',label=plot_title+' real')
+        if xrange is None:
+            xrange = range(len(self.sequence))
+        plt.plot(xrange,self.sequence,alpha=0.8,color='black',label=plot_title+' real')
         plt.title(plot_title)
         plt.xlabel("Time")
         plt.ylabel("Value")

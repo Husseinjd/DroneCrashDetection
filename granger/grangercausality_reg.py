@@ -12,7 +12,9 @@ import sys
 import pickle
 
 class GrangerCausalityTest():
+
     def __init__(self,x=None,y=None,pd_frame=None,maxlag=None,alpha=0.05,names=['x','y']):
+
         """
             Init
         """
@@ -25,7 +27,7 @@ class GrangerCausalityTest():
         self.dict_res = {}
 
 
-    def var_grangertest(self,check_stationary=True,verbose=True,use_simpleols = False):
+    def test(self,check_stationary=True,verbose=True,use_simpleols = False):
         if self.df is None:
             print('Empty Dataframe')
             return -1
@@ -42,16 +44,20 @@ class GrangerCausalityTest():
                 if is_stationary_y:
                     self.dict_res['err'] = False
                 else:
+                    print('Non-Stationary Data')
                     self.dict_res['err'] = True
                     return np.nan
+            else:
+                print('Non-Stationary Data')
+                return np.nan
                 
 
 
 
-        xcy = self.df.columns[0]+ ' causes ' + self.df.columns[1]
-        ycx = self.df.columns[1]+ ' causes ' + self.df.columns[0]
+        self.xcy = self.df.columns[0]+ ' causes ' + self.df.columns[1]
+        self.ycx = self.df.columns[1]+ ' causes ' + self.df.columns[0]
         nc = 'no-causal'
-        self.dict_res = {xcy : np.nan , ycx : np.nan , nc : np.nan,'bc' : np.nan ,'err': np.nan}
+        self.dict_res = {self.xcy : np.nan , self.ycx : np.nan , nc : np.nan,'bc' : np.nan ,'err': np.nan}
 
         
         model = VAR(self.df)
@@ -72,26 +78,26 @@ class GrangerCausalityTest():
         #xcy
         res_xyc = mf.test_causality(self.df.columns[1],self.df.columns[0])
         if res_xyc.conclusion == 'reject':
-            self.dict_res[xcy] =True
+            self.dict_res[self.xcy] =True
         else:
-            self.dict_res[xcy] = False
+            self.dict_res[self.xcy] = False
 
 
         #ycx
         res_ycx = mf.test_causality(self.df.columns[0],self.df.columns[1])
         if res_ycx.conclusion == 'reject':
-            self.dict_res[ycx] =True
+            self.dict_res[self.ycx] =True
         else:
-            self.dict_res[ycx] = False
+            self.dict_res[self.ycx] = False
 
 
 
         #both causes each other
-        if self.dict_res[ycx] and  self.dict_res[xcy]:
+        if self.dict_res[self.ycx] and  self.dict_res[self.xcy]:
             self.dict_res['bc'] = True
         
         #no causal
-        if self.dict_res[xcy] == False and self.dict_res[ycx] == False:
+        if self.dict_res[self.xcy] == False and self.dict_res[self.ycx] == False:
             self.dict_res[nc] = True
         else:
             self.dict_res[nc] = False
@@ -99,7 +105,24 @@ class GrangerCausalityTest():
         return 0 #success
 
 
+    def loadasdf(self):
+        xlabel = self.df.columns[0]
+        ylabel = self.df.columns[1]
+        temp =  pd.DataFrame({xlabel : [np.nan,np.nan],ylabel : [np.nan,np.nan]} ,index = [xlabel,ylabel])
+        if self.dict_res[self.xcy] and self.dict_res[self.ycx]:
+            temp.loc[xlabel,ylabel] = 2
+            temp.loc[ylabel,xlabel] = 2
+        elif self.dict_res[self.xcy]:
+            temp.loc[xlabel,ylabel] = 1
+        elif self.dict_res[self.ycx]:
+            temp.loc[ylabel,xlabel] = 1  
+        elif  self.dict_res['no-causal'] :
+            temp.loc[xlabel,ylabel] = 0
+            temp.loc[ylabel,xlabel] = 0
+        return temp
+
     def stationary_test(self,timeseries, plot = False, print_stats = False):
+
         try:
             dftest = adfuller(timeseries,maxlag=5, autolag='t-stat') #this was changed to the time it takes
         except:
@@ -113,6 +136,7 @@ class GrangerCausalityTest():
             print (dfoutput)
         if dfoutput['Test Statistic'] <= dfoutput['Critical Value (1%)']:
             is_stationary = True
+            #print(dfoutput['Test Statistic'], dfoutput['Critical Value (1%)'])
         if plot:
             plt.clf()
             plt.xlabel("Time")
@@ -183,9 +207,6 @@ class GrangerCausalityTest():
         else:
             self.dict_res['bc']  = True
 
-           
-        
-
     def granger_test(self,bias=False,check_stationary=True):
         """apply granger causality test to test of x causes y
         
@@ -199,7 +220,7 @@ class GrangerCausalityTest():
         # we want to check if x causes y
         #check if lag 
         if len(self.x) != len(self.y):
-            print('Incompatible length between x and y')    
+            print('Incompatible length between x and y') 
             return -1
         #check if x and y are of the same length
         if self.maxlag > len(self.x):
@@ -243,3 +264,6 @@ class GrangerCausalityTest():
         fstat = ((r_model.ssr - f_model.ssr)/ df1) / (f_model.ssr / df2)
         p_value = 1- stats.f.cdf(fstat, df1, df2)
         return fstat,p_value
+    
+    
+

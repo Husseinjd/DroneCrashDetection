@@ -161,7 +161,7 @@ def corr_var(filename,loader,dictlist,find_corr=True):
     :param dictlist  : dict with components needed as key and variable list as values
     e.g. { RCIN : [C1,C2 ..]}
     """
-    full_df = pd.DataFrame({'tempcol':[0]}) #temp dataframe
+    full_df = pd.DataFrame() #temp dataframe
     novaluescounter=0 #count the number of columns not found per log file
     for key,values in dictlist.items():
         resp = loader.dbconnector.query(key+'_'+filename)
@@ -176,13 +176,10 @@ def corr_var(filename,loader,dictlist,find_corr=True):
             df = df[values+['lineIndex']].set_index('lineIndex')
             df.columns = [key+'_'+col for col in df.columns]
         except:
+            print('error')
             novaluescounter+=1
             continue
         full_df = pd.concat([full_df,df],axis =1).fillna(method = 'ffill')
-    
-    #clean up the init column
-    full_df = full_df.drop([0],axis=0)
-    full_df = full_df.drop('tempcol',axis=1)
 
     if len(full_df) > 1 :
         #check for categorica  l columns and set them for numeric
@@ -268,8 +265,6 @@ def get_connections(graph,node,outgoing=False,incoming=False,plot=False):
         plt.draw()
         plt.show()
     return nd
-
-
 
 
 
