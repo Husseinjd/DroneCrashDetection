@@ -109,6 +109,7 @@ def yawfix(series):
     sum = sum * 360
     sum = pd.Series(sum, index = series.index)
     series = series + sum.shift(1)
+    series = series.fillna(method='bfill')
     return series
 
 def load_top100_dict(sample=None):

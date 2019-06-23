@@ -278,16 +278,19 @@ class Segmentation():
             ratio_list.append(clc_val)
         return ratio_list,np.argmax(np.array(ratio_list))
         
-    def draw_segments(self,highlight_idx = None):
+    def draw_segments(self,highlight_idx = None,segments=None):
         """plot fitted segments
         
         Arguments:
             segments {[list]} -- tuples representing the line coordinates 
         """
         ax = plt.gca()
-        for i,segment in enumerate(self.segments):
-            clr = 'blue'    
-            if highlight_idx == i:
+        if segments is None:
+            segments = self.segments
+        for i,segment in enumerate(segments):
+            clr = 'blue'
+            x1,y1,x2,y2 = segment
+            if 1 in  highlight_idx[x1:x2]:
                 clr = 'red'
             line = Line2D((segment[0],segment[2]),(segment[1],segment[3]),color=clr)
             ax.add_line(line)

@@ -19,7 +19,7 @@ from sklearn.naive_bayes import GaussianNB
 class GrangerCausalityDiscrete(GrangerCausalityTest):
     """Granger Causality Test Based on Classification Models
     """
-    def __init__(self,x=None,y=None,pd_frame=None,maxlag=None,alpha=0.05,names=['x','y'],class_method='svm'):
+    def __init__(self,x=None,y=None,pd_frame=None,maxlag=None,alpha=0.05,names=['x','y'],class_method='dt'):
             #init super()
             super().__init__(x,y,pd_frame,maxlag,alpha,names)
 
@@ -61,9 +61,9 @@ class GrangerCausalityDiscrete(GrangerCausalityTest):
         elif classifier == 'nb':
             clf = GaussianNB()
         elif classifier == 'dt':
-            clf = DecisionTreeClassifier(random_state=0,max_depth=2)
+            clf = DecisionTreeClassifier(random_state=1)
         elif classifier == 'knn':
-            clf = KNeighborsClassifier(n_neighbors=5) 
+            clf = KNeighborsClassifier(n_neighbors=7) 
         elif classifier == 'lr':
             clf = LogisticRegression()
 
