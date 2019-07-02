@@ -17,6 +17,14 @@ from utils.features_eng import *
 from granger.grangercausality_cl import GrangerCausalityDiscrete
 
 def signal_comp_va(signal_name):
+    """divide signal name into component,signal
+    
+    Arguments:
+        signal_name {[str]} -- e.g. GPS_Alt
+    
+    Returns:
+        [tuple] -- component,signal e.g. GPS,Alt
+    """
     return  signal_name[:signal_name.index('_')],signal_name[signal_name.index('_')+1:]
 
 def ft_eg(signal_name,sr,segmts,lag=5):
@@ -64,6 +72,21 @@ def segment_signal(sr):
 
 
 def align_index(filename,comp_x,va_x,comp_z,va_z,dl):
+    """Signals are not automatically aligned regarding time index, this functions solves that
+
+    
+    Arguments:
+
+        filename {str} -- filename to extract the signals from
+        comp_x {str} -- component title e.g. GPS
+        va_x {str} -- component signals e.g.  Alt
+        comp_z {[str]} -- component title
+        va_z {[str]} -- component signal
+        dl {[dataloader]} -- dataloader instance
+    
+    Returns:
+        [dataframe] -- dataframe where the two columns are aligned
+    """
     #aligning the time index of the two signals
     #---------------------------------------------------------------------------
     ts = {comp_x:[va_x],comp_z:[va_z]}
@@ -84,11 +107,25 @@ def align_index(filename,comp_x,va_x,comp_z,va_z,dl):
     return dft
 
 def causality_cls_preprocess(x,y,z,filename,lag,dl):
+
     """
     preprocess data to put it in the write form for granger test using classification
 
     :param filename : log file to process
     :param lag: lag value for features 
+    :param dl: dataloader instance
+
+    Returns: 
+    -------- 
+    dft : aligned x and z indexes
+    dft_y: aligned x and y indexes
+    dataset_x: dataframe of x features 
+    dataset_y: dataframe of y features
+    dataset_z: dataframe of z features
+    dataset_combined_xz: dataframe of combined x and z features
+    dataset_combined_yz: dataframe of combined y and z features
+    target: y target created after aligning index with x 
+    target_y:y target created after aligning index with y 
 
     """
     # segmenting signals
@@ -144,7 +181,24 @@ def causality_cls_preprocess(x,y,z,filename,lag,dl):
 
 
 def test_causality(df, comp_x, va_x, dataset_red, dataset_combined, comp_z, va_z, target,cv):
-    l = ['nb', 'dt', 'knn', 'lr']
+    """Testing causality for given x and z signals
+    
+    Arguments:
+
+        df {dataframe} --dft extracted from causality_cls_preprocess containing aligned signals
+        comp_x {[str]} -- 
+        va_x {[str]} -- 
+        dataset_red {[dataframe]} -- restricted features
+        dataset_combined {[dataframe]} -- combined features 
+        comp_z {[str]} --
+        va_z {[str]} -- 
+        target {[list]} --
+        cv {[int]} -- [number of folds]
+    
+    Returns:
+        [dict] -- [dictionary with classifier as key and dict as value with keys Mean-Acc-full , Mean-acc-reduced , P-value]
+    """
+    l = ['nb', 'dt', 'knn', 'lr'] #classification algorithms
     gcl = GrangerCausalityDiscrete(
         names=[comp_x+'_'+va_x, comp_x+' +' + comp_z])
     dict_cls = {}
