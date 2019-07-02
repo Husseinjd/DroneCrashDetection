@@ -5,3 +5,5 @@ sample_testing/
 .vscode/
 *.ipynb_checkpoin/
 analysis/dt_pickles/
+granger/*.pyc
+granger/*.__pycache__/ 
