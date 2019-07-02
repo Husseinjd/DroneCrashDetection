@@ -42,6 +42,9 @@ class Segmentation():
             method {str} -- [fitting method] (default: {'ls'})
             err_method {str} -- [error computation method] (default: {'ssr'})
             seq_range {[list]} -- [index list for the given time series list] (default: {None})
+            err_growth{[float]} -- [growth rate for error]
+            batch{(bool)} -- [uses batches for segmentation - works only with top down segmentation]
+            batch{(batch_size)} -- [batch size for batching]
         """
         self.sequence = sequence
         
@@ -123,6 +126,7 @@ class Segmentation():
 
 
     def bottomupsegment(self,fit_sequence, compute_error,seq_range):
+
         """
         Return a list of line segments that approximate the sequence.
 
@@ -173,6 +177,9 @@ class Segmentation():
         create_segment : a function of two arguments (sequence, sequence range) that returns a line segment that approximates the sequence data in the specified range
         compute_error: a function of two argments (sequence, segment) that returns the error from fitting the specified line segment to the sequence data
         max_error: the maximum allowable line segment fitting error
+        err_growth :  growth rate of the error
+        batch : boolean - activate batch procedure
+        batch_size 
 
         """
         if not seq_range:
@@ -272,6 +279,12 @@ class Segmentation():
         plt.legend()
 
     def find_maxratio(self):
+        """calculate and return the max slope value for the segments
+        
+        Returns:
+            [ratio_list] -- [list of slope values for the segments list]
+            [max_idx] -- index with the max ration
+        """
         ratio_list = []
         for segment in self.segments:
             clc_val = calc_segmentsRation(segment[0],segment[1],segment[2],segment[3])
@@ -283,6 +296,7 @@ class Segmentation():
         
         Arguments:
             segments {[list]} -- tuples representing the line coordinates 
+            highligh_idx  [{default=None}] -- index for for a segment to highlight in the plot
         """
         ax = plt.gca()
         if segments is None:
