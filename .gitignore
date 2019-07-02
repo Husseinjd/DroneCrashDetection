@@ -1,9 +1,10 @@
 *.log
-*.__pycache__/
+analysis/__pycache__/
 .ipynb*
 sample_testing/
 .vscode/
 *.ipynb_checkpoin/
 analysis/dt_pickles/
-granger/*.pyc
-granger/*.__pycache__/ 
+*.pyc
+granger/__pycache__/
+ granger/pickle/*
