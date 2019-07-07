@@ -20,6 +20,10 @@ Repository for Automatic Diagnosis of Drone Crashes
 │    └── grangercausality_reg.py    - regression granger causality
 │    └── causality_analysis.py      - applying granger causality to dataset + viz 
 │    
+├── phase4_analysis            - folder containing scripts used for analysis of phase 4
+│    └── p4_anaylsis.py        -module containing methods used for the analysis
+│    └── p4_anaylsis.ipynb
+│
 ├── db               - this folder contains the database module
 │    └── database.py
 ├── failure_detector               - this folder contains the failure detector module

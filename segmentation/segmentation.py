@@ -20,6 +20,7 @@ class Segmentation():
     """
 
     def __init__(self,max_error):
+
         """Segmentation init
         
         Arguments:
@@ -33,6 +34,7 @@ class Segmentation():
 
 
     def segment(self,sequence,seg_method ='sw' ,fit_method='ls',err_method='ssr',seq_range=None,save_seginstance=False,err_growth=0,batch=True,batch_size=None):
+
         """Return a list of line segments that approximate the sequence.
         
         Arguments:
@@ -305,6 +307,26 @@ class Segmentation():
             clr = 'blue'
             x1,y1,x2,y2 = segment
             if 1 in  highlight_idx[x1:x2]:
+                clr = 'red'
+            line = Line2D((segment[0],segment[2]),(segment[1],segment[3]),color=clr)
+            ax.add_line(line)
+
+
+    def draw_segments_modified(self,highlight_idx = None,segments=None):
+        """plot fitted segments - this one is modified to act on per segment instead 
+        of a list of values from the original series of events
+        
+        Arguments:
+            segments {[list]} -- tuples representing the line coordinates 
+            highligh_idx  [{default=None}] -- index for for a segment to highlight in the plot
+        """
+        ax = plt.gca()
+        if segments is None:
+            segments = self.segments
+        for i,segment in enumerate(segments):
+            clr = 'blue'
+            x1,y1,x2,y2 = segment
+            if highlight_idx[i] == 1:
                 clr = 'red'
             line = Line2D((segment[0],segment[2]),(segment[1],segment[3]),color=clr)
             ax.add_line(line)

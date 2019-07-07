@@ -19,6 +19,9 @@ def segment_ratio(series, segments):
     return ratio_series
 
 
+
+
+
 def segment_mean(series,segments):
     mean_series = series.copy(deep = True)
     for segment in segments:
