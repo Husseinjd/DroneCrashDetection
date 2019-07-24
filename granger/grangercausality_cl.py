@@ -1,4 +1,4 @@
-from grangercausality_reg import GrangerCausalityTest
+
 from sklearn import svm
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_val_score
@@ -9,6 +9,7 @@ import sys
 module_path = os.path.abspath(os.path.join('..'))
 if module_path not in sys.path:
     sys.path.append(module_path)
+from granger.grangercausality_reg import GrangerCausalityTest
 from utils.utils import *
 from scipy import stats
 from sklearn.tree import DecisionTreeClassifier

@@ -13,6 +13,28 @@ import seaborn as sns
 
 
 
+
+
+##---- 
+def map_axis(df,list_segments):
+    """modifies the list of segments to have the lineindex as the axis; that is
+    modifying the axis to represent the lineindex instead of the x-axis
+    
+    Arguments:
+        df {[dataframe]} -- [dataframe containing the lineindex as a column]
+        list_segments {[list]} -- [list of segments, were the segments were created using the same dataframes]
+    """
+    assert 'lineIndex' in df.columns , "LineIndex not in dataframe"
+    modified_list = []
+    for sg in list_segments:
+        x1 = df.lineIndex[sg[0]]
+        x2 = df.lineIndex[sg[2]]
+        new_seg = (x1 , sg[1],x2,sg[3])
+        modified_list.append(new_seg)
+    
+    return modified_list
+#----
+
 def calc_segmentsRation(x1,y1,x2,y2):
     return np.abs((y2 - y1)) / np.abs((x2 - x1))
 
@@ -156,6 +178,25 @@ def cat_to_int(df,col):
     except:
         print('Error Occured while casting')
         return -1
+
+
+def align_index(sig_1,sig_2):
+    """given two signals with lineIndex as index align the index and combine both into one dataframe
+       this method is used for granger causality tests
+    
+    Arguments:
+        sig_1 {dataframe} -- signal 1
+        sig_2 {dataframe} -- signal_2
+    Returns:
+        dataframe
+    """
+    try:
+        full_df = pd.concat([sig_1,sig_2],axis =1).fillna(method = 'ffill')
+        return full_df
+    except:
+        print('Error aligning indexes')
+        return -1
+
 
 def corr_var(filename,loader,dictlist,find_corr=True):
     """

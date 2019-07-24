@@ -14,7 +14,6 @@ import pickle
 class GrangerCausalityTest():
 
     def __init__(self,x=None,y=None,pd_frame=None,maxlag=None,alpha=0.05,names=['x','y']):
-
         """
             Init
         """

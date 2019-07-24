@@ -33,7 +33,8 @@ class Segmentation():
         self.segment_list = []  #a list of segment instances
 
 
-    def segment(self,sequence,seg_method ='sw' ,fit_method='ls',err_method='ssr',seq_range=None,save_seginstance=False,err_growth=0,batch=True,batch_size=None):
+    def segment(self,sequence,seg_method ='sw' ,fit_method='ls',err_method='ssr',seq_range=None,save_seginstance=False,err_growth=0,batch=True,batch_size=None,num_dessegs=np.inf):
+
 
         """Return a list of line segments that approximate the sequence.
         
@@ -50,7 +51,7 @@ class Segmentation():
         """
         self.sequence = sequence
         
-        if  not seq_range :
+        if  seq_range is None :
             self.seq_range = (0, len(self.sequence) - 1)
         else:
             self.seq_range = seq_range
@@ -80,7 +81,7 @@ class Segmentation():
         if seg_method == 'sw':
             self.segments = self.slidingwindowsegment(self.fit_sequence,self.compute_error,seq_range=self.seq_range)
         elif seg_method == 'td':
-            self.segments = self.topdownsegment(self.fit_sequence, self.compute_error,self.seq_range,self.max_error,err_growth,batch=batch,batch_size=batch_size)
+            self.segments = self.topdownsegment(self.fit_sequence, self.compute_error,self.seq_range,self.max_error,err_growth,batch=batch,batch_size=batch_size,num_dessegs=num_dessegs)
         elif seg_method == 'bu':
             self.segments = self.bottomupsegment(self.fit_sequence, self.compute_error,seq_range=self.seq_range)
         else:
@@ -167,7 +168,8 @@ class Segmentation():
             return -1
 
 
-    def topdownsegment(self,fit_sequence, compute_error,seq_range,max_err,err_growth,batch,batch_size):
+    def topdownsegment(self,fit_sequence, compute_error,seq_range,max_err,err_growth,batch,batch_size,num_dessegs):
+
         """
         Return a list of line segments that approximate the sequence.
 
@@ -184,7 +186,7 @@ class Segmentation():
         batch_size 
 
         """
-        if not seq_range:
+        if  seq_range is None:
             seq_range = (0, len(self.sequence) - 1)
 
         bestlefterror, bestleftsegment = float('inf'), None
@@ -202,18 +204,22 @@ class Segmentation():
                 bestlefterror, bestrighterror = error_left, error_right
                 bestleftsegment, bestrightsegment = segment_left, segment_right
                 bestidx = idx
+
         if bestlefterror <= max_err:
             leftsegs = [bestleftsegment]
+        
         else:
             leftsegs = self.topdownsegment(fit_sequence,compute_error, (seq_range[0], bestidx),err_growth = err_growth,
-                                         max_err = err_growth*max_err + max_err,batch=batch,batch_size=batch_size)                                    
+                                         max_err = err_growth*max_err + max_err,batch=batch,batch_size=batch_size,num_dessegs=num_dessegs)                                    
+        
         if bestrighterror <= max_err:
             rightsegs = [bestrightsegment]
+
         else:
-             rightsegs = self.topdownsegment(fit_sequence,compute_error,(bestidx, seq_range[1]),err_growth=err_growth,
-                                        max_err = err_growth*max_err + max_err,batch=batch,batch_size=batch_size)
-        
+            rightsegs = self.topdownsegment(fit_sequence,compute_error,(bestidx, seq_range[1]),err_growth=err_growth,
+                                        max_err = err_growth*max_err + max_err,batch=batch,batch_size=batch_size,num_dessegs=num_dessegs)
         self.segments = leftsegs + rightsegs
+
         return self.segments
 
     def interpolate(self,seq_range):
@@ -292,41 +298,3 @@ class Segmentation():
             clc_val = calc_segmentsRation(segment[0],segment[1],segment[2],segment[3])
             ratio_list.append(clc_val)
         return ratio_list,np.argmax(np.array(ratio_list))
-        
-    def draw_segments(self,highlight_idx = None,segments=None):
-        """plot fitted segments
-        
-        Arguments:
-            segments {[list]} -- tuples representing the line coordinates 
-            highligh_idx  [{default=None}] -- index for for a segment to highlight in the plot
-        """
-        ax = plt.gca()
-        if segments is None:
-            segments = self.segments
-        for i,segment in enumerate(segments):
-            clr = 'blue'
-            x1,y1,x2,y2 = segment
-            if 1 in  highlight_idx[x1:x2]:
-                clr = 'red'
-            line = Line2D((segment[0],segment[2]),(segment[1],segment[3]),color=clr)
-            ax.add_line(line)
-
-
-    def draw_segments_modified(self,highlight_idx = None,segments=None):
-        """plot fitted segments - this one is modified to act on per segment instead 
-        of a list of values from the original series of events
-        
-        Arguments:
-            segments {[list]} -- tuples representing the line coordinates 
-            highligh_idx  [{default=None}] -- index for for a segment to highlight in the plot
-        """
-        ax = plt.gca()
-        if segments is None:
-            segments = self.segments
-        for i,segment in enumerate(segments):
-            clr = 'blue'
-            x1,y1,x2,y2 = segment
-            if highlight_idx[i] == 1:
-                clr = 'red'
-            line = Line2D((segment[0],segment[2]),(segment[1],segment[3]),color=clr)
-            ax.add_line(line)

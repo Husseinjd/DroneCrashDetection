@@ -19,26 +19,41 @@ from dtloader.dataloader import DataLoader
 from utils.utils import *
 from utils.features_eng import *
 from segmentation.segmentation import Segmentation
+from scipy.stats import ttest_ind
+from statsmodels.tsa.stattools import grangercausalitytests
 
-def segment_signal(sr):
+def segment_signal(sr,max_err = None,err_growth=0,num_dessegs=np.inf):
     """
     return a segment list of the signal
     """
-    sg = Segmentation(np.mean(sr))
+    if max_err is None:
+        max_err = np.mean(sr)
+    sg = Segmentation(max_err)
     fitmethod= 'inter'
     sgmethod = 'td'
-    try:
-        segments = sg.segment(sr,seg_method=sgmethod,fit_method=fitmethod,err_growth=0.02,batch=False,batch_size=50)
-    except:
-        print('Error')
-        return -1
+    segments = sg.segment(sr,seg_method=sgmethod,fit_method=fitmethod,err_growth=err_growth,batch=False,batch_size=50,num_dessegs=num_dessegs)
     return segments
 
 def idx_segments_threshold(df_sg,sgmts,percen=92):
+    """Return target list of segments were ration greater than the 92 percentile by default
+    
+    Arguments:
+        df_sg {[dataframe]} -- [description]
+        sgmts {[list of tuples]} -- [description]
+    
+    Keyword Arguments:
+        percen {int} -- [description] (default: {92})
+    
+    Returns:
+        [list] -- [description]
+    """
     ratios = []
+    if sgmts == -1:
+        print('Segmentation Failed')
+        return -1
     for segment in sgmts:
         x1,y1,x2,y2 = segment
-        ratios.append((y2-y1))    
+        ratios.append((y2-y1)/(x2-x1))    
     assert len(ratios) == len(sgmts),"Length does not match"
     target = np.zeros_like(ratios)
     if percen > 0: 
@@ -48,126 +63,163 @@ def idx_segments_threshold(df_sg,sgmts,percen=92):
     
     return ratios,target
 
-def plot_segments_signal(sr,sgmts,target = None,title=''):
-    plt.figure()
-    plt.plot(sr)
-    sg = Segmentation(1)
-    sg.draw_segments_modified(highlight_idx=target,segments=sgmts)
+def plot_segments_signal(sr,sgmts,target = None,title='',marker='r*-'):
+    for i,sgmt in enumerate(sgmts):
+        if target[i] == 1:
+            x_points = [sgmt[0],sgmt[2]]
+            y_points = [sgmt[1],sgmt[3]]
+            plt.plot(x_points,y_points,marker)
     plt.title(title)
-    plt.show()
 
-#Method used to run the code through the entire dataset and store the information in a dict which
-#later analyzed to get the statistics
-#plots and results are in the jupyter notebook in this file
-def p4_analyze():
-    """The method extract , segments , filter by threshold and returns the potentioanl causes for DesYaw signal ,
-    by checking user input and rcout
+def high_mgfield_detect(list_prev_seg,list_post_seg):
+    """detect high fluctuation in magnetic field according to a threshold,
+       by checking the absolute difference between the slopes of the segments before and after
+    
+    Arguments:
+        list_prev_seg {[list]} -- [list of segments before the event]
+        list_post_seg {[list]} -- [list of segments after the event]
+    """
+    slope_prev_sg = []
+    slope_post_sg = []
+    for prev_sg in list_prev_seg:
+        x1,y1,x2,y2 = prev_sg
+        slope_prev_sg.append((y2+y1/2))
+    
+    for post_sg in list_post_seg:
+        x1,y1,x2,y2 = post_sg
+        slope_post_sg.append((y2+y1)/2)
 
+    return ttest_ind(slope_prev_sg,slope_post_sg)
+
+
+def signals_stat(d,files_list,dt):
+    """statisitcs about the existance of the signals in the datalogs
+    
+    Arguments:
+        d {[type]} -- [dictionary with comp as keys and comp columns as values in a list]
+        e.g.
+        d = {'RCOU':['Ch1','Ch2','Ch3','Ch4'],
+        'RCIN':['C3','C4'],
+        'MAG':['MagX','MagY','MagZ'],
+        'CTUN':['ThrOut'],
+        'GPS':['Alt'],
+        'ATT':['Yaw','DesYaw'],
+        'MODE':['ModeNum']
+            }
+        files_list {[type]} -- [description]
+        dt {[Dataloader instalce]} -- [description]
     
     Returns:
-        [dict] -- [dict containing the information on the causes]
+        [dataframe] -- 
     """
-    dt = DataLoader()
-    datalist =os.listdir('../data')
-    comp = 'ATT'
-    bicausal_dt = {}
-    counter_events = 0
-    #np.array(datalist)[np.random.choice(len(datalist), 100)]
-    for i,log in enumerate(['577668e2d959285826b1e718.log']):
-        print('File:{} --  {} / {}'.format(log,i,len(datalist)-1))
-        filename = log[:-4]
+    res_dt  = {}
+    num_sig = len(d.keys())
+    for i,filename in enumerate(files_list):
+        l_res = [1]*num_sig
+        if i % 100  == 0:
+              print(i)
+        for idx,(comp,sig) in enumerate(d.items()):
+                df = pd.DataFrame(dt.dbconnector.query(comp+'_'+filename))
+                if len(df) <= 0 : #comp does not exist
+                    l_res[idx] = np.nan
+                    break
+                else: 
+                    for signal_col in sig: #check if all signals exist in the dataframe
+                        if not signal_col in df.columns:
+                            l_res[idx] = np.nan
+                            
+        res_dt [filename] = l_res
+    resdf = pd.DataFrame(res_dt).T
+    resdf.columns = list(d.keys())
+    return resdf
 
-        #DESYAW
-        df = pd.DataFrame(dt.dbconnector.query(comp+'_'+filename))
 
-        #RCOUT
-        df_rcout = pd.DataFrame(dt.dbconnector.query('RCOU'+'_'+filename))
-        if len(df_rcout) < 10 :
-            continue
-        #RCIN    
-        df_rcin = pd.DataFrame(dt.dbconnector.query('RCIN'+'_'+filename))
-        if len(df_rcin) < 10 :
-            continue
-
-        try:            
-            sr_mode = corr_var(filename,dt,{'MODE':['ModeNum'],'ATT':['DesYaw']},find_corr=False).reset_index()['MODE_ModeNum']
-        except:
-            continue
-        if isinstance(sr_mode,int):
-            continue
+def get_yaw_event(file_detect,dt,unwrap_thresh=280,undes_thresh=70):
+    """get the first segment where we detect an uncontrolled yaw value
     
+    Arguments:
+        file_detect {[string]} -- [description]
+    
+    Keyword Arguments:
+        unwrap_thresh {int} -- [description] (default: {280})
+        undes_thresh {int} -- [description] (default: {70})
+    Return:
+        dataframe -- yaw dataframe 
+        int -- lineindex value where the event occured
+    """
+
+    df = pd.DataFrame(dt.dbconnector.query('ATT'+'_'+ file_detect))
+    df['Yaw'] = np.unwrap(df['Yaw'],280)
+    df['DesYaw'] = np.unwrap(df['DesYaw'],280)
+    bool_res = abs(df['Yaw'] - df['DesYaw']) > undes_thresh #Detection RULE
+    for i,b in enumerate(bool_res):
+        if b == True:
+            line_idx_pos = df.iloc[i,-1] #line index number of when the event started
+            return df,line_idx_pos
+    return -1 #no event occured 
+
+def get_targets(sgmts,line_idx_pos,lower_window=20,upper_window=20):
+
+
+    """find the segment where the value line_idx_pos is contained in.
+
+    Arguments:
+        line_idx_pos {int} -- position where an event had occured and we wish to find on the signal
+    
+    Returns:
+        [list of integers] -- [list of 0's and 1's]
+    """
+    #ratios ,_  = idx_segments_threshold(sig,sgmts) #might be used with something else
+    target = np.zeros(len(sgmts))
+    for sg_idx , sg in enumerate(sgmts):
+            if (line_idx_pos >= sg[0] - lower_window ) and ( line_idx_pos  <= sg[2] + upper_window):
+                target[sg_idx] = 1 
+                #break #look at more than one segment
+    return target
+
+#plotting the signals and segmenting
+def plot_sig_lineidx(comp,sig,dt,line_idx_pos,file,err=2,lower_window=100):
+    plt.figure(figsize=(10,8))
+    if comp =='MODE':
+        d = corr_var(file,dt,{'MODE':['ModeNum'],'ATT':['DesYaw']},find_corr=False)[['MODE_ModeNum']]
+        d.columns = [sig]
+        d = d.reset_index()
+    else:
+        d = pd.DataFrame(dt.dbconnector.query(comp+'_'+file))
+        if len(d) <= 0 :
+            print(f'{comp}_{sig} do not exist.')
+            return -1
+    sig_val  = d[sig]
+    sgm = map_axis(d,segment_signal(sig_val,err))
+    target = get_targets(sgm,line_idx_pos)
+    d = d.set_index('lineIndex')
+    d[sig].plot()
+    plot_segments_signal(sig_val,sgm,target = target,title=sig)
+    plt.show()
+    return sgm,d
+
+def get_window_values(sig_df,line_idx,win=600):
+    """
+    filter the signal dataframe by the idx in the lineidex 
+    and return a filtered dataframe
+    """
+    lower_win = max(0,line_idx - win)
+    upper_win = min(np.max(sig_df['lineIndex']),line_idx + win)
+    bool_idx = (sig_df['lineIndex'] >= lower_win) & (sig_df['lineIndex'] <= upper_win)
+    return sig_df[bool_idx]
+
+def test_signal(yawdf,causedf):
+    aldf = align_index(yawdf, causedf)
+    mxlag = 20
+    while(True):
         try:
-            df_rcout['total_out'] = df_rcout['Ch1'] +  df_rcout['Ch2'] - (df_rcout['Ch4'] +  df_rcout['Ch3'])
-        except: #Required channels not found
-            continue
-
-        #fixing the yaw
-        df['Yaw'] = yawfix(df['Yaw'])
-        df['DesYaw'] = yawfix(df['DesYaw'])
-        #segment all three signals
-        print('Segmenting...')
-        sgmts_desyaw = segment_signal(df['DesYaw'])
-        sgmts_totalout = segment_signal(df_rcout['total_out'])
-        sgmts_rcin = segment_signal(df_rcin['C4'])
-        sgmts_mode = segment_signal(sr_mode)
-        
-        if isinstance(sgmts_desyaw,int) or isinstance(sgmts_totalout,int) or isinstance(sgmts_rcin,int) or  isinstance(sgmts_mode,int):
-            continue
-
-        ratios_desyaw ,target_desyaw  = idx_segments_threshold(df['DesYaw'],sgmts_desyaw)
-        ratios_totalout,target_totalout  = idx_segments_threshold( df_rcout['total_out'] ,sgmts_totalout)
-        ratios_rcin,target_rcin  = idx_segments_threshold(df_rcin['C4'],sgmts_rcin)
-        ratios_mode,target_mode  = idx_segments_threshold(sr_mode,sgmts_mode,0)
-
-        #Extracting segments were ratio threshold match
-        seg_inc_totalout = np.array(sgmts_totalout)[target_totalout == 1]
-        seg_inc_rcin = np.array(sgmts_rcin)[target_rcin == 1]
-        seg_inc_desyaw = np.array(sgmts_desyaw)[target_desyaw == 1]
-        seg_inc_mode = np.array(sgmts_mode)[target_mode == 1]
-
-        print('Checking Events...')
-        #Looping through the events (DesYaw Segments)
-        bicausal_dt[filename] = {}
-        if  i  < 30:
-            plot_segments_signal(df['DesYaw'],sgmts_desyaw,target = target_desyaw,title='DesYaw')
-            plot_segments_signal(df_rcout['total_out'],sgmts_totalout,target = target_totalout,title='RCOU')
-            plot_segments_signal(df_rcin['C4'],sgmts_rcin,target = target_rcin,title='RCIN_C4')
-            plot_segments_signal(sr_mode,sgmts_mode,target = target_mode,title='MODE')
-        for seg_desyaw in seg_inc_desyaw:
-            counter_events+=1
-            event_num = 'event' + str(counter_events)
-        
-            #[0,0,0,x1,x2] first zero for user, second for controller, mode , event_start,event_end
-            init_res_list = [0,0,0,seg_desyaw[0],seg_desyaw[2]]  
-            #creating a window for the interval (sometimes it takes some x's for the result to show)
-            lower_window = seg_desyaw[0]
-            if seg_desyaw[0] >= 50:
-                lower_window = seg_desyaw[0] - 50 
-            upper_window = seg_desyaw[2] + 50
-        
-            #check if rcin and total_out segments are in the interval of the event
-            #for each segment in rcin
-            for seg_rcin in seg_inc_rcin:
-                if (seg_rcin[0] >= lower_window) and (seg_rcin[2] <= upper_window):
-                    init_res_list[0] = 1
-                    break #dont check more segments (performance)
-            
-            #for each segment in totalout
-            for seg_totout in seg_inc_totalout:
-                if (seg_totout[0] >= lower_window) and (seg_totout[2] <= upper_window):
-                    init_res_list[1] = 1
-                    break #dont check more segments (performance)
-            
-            for seg_mode in seg_inc_mode:
-                if (seg_mode[0] >= lower_window) and (seg_mode[2] <= upper_window):
-                    init_res_list[2] = 1
-                    break #dont check more segments (performance)
-            
-            #add the event with the results
-            bicausal_dt[filename][event_num] = init_res_list
-            print('Dictionary Updated.')
-
-    # plot_segments_signal(df['DesYaw'],sgmts_desyaw,target = target_desyaw,title='DesYaw')
-    # plot_segments_signal(df_rcout['total_out'],sgmts_totalout,target = target_totalout,title='RCOU')
-    # plot_segments_signal(df_rcin['C4'],sgmts_rcin,target = target_rcin,title='RCIN_C4')
-    return bicausal_dt    
+            pvalue = grangercausalitytests(np.array(aldf.dropna(
+            )), maxlag=mxlag, addconst=True, verbose=False)[mxlag-1][0]['ssr_ftest'][1]
+            print(f'Maxlag = {mxlag} ; pvalue = {pvalue}')
+            return mxlag,pvalue
+        except:
+            print(f'Error in maxlag = {mxlag}')
+            mxlag-=2
+            if mxlag <= 0:
+                break
+    return -1,-1
